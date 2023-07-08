@@ -1,0 +1,191 @@
+-- link = https://www.youtube.com/watch?v=cRfNRfcbSDA&list=PLK3b5d4iK10cIrN8c_au9RrC0_eBCOyR2&index=9
+-- link = https://dune.com/queries/1769753
+-- Day 7: Liquidity (& LPs) Added and Removed Over Time for a DEX Pool (USDC/WETH)
+-- gns - 0xe5417af564e4bfda1c483642db72007871397896
+-- for polygon
+
+/** 
+Amount of liquidity added and removed over time for USCD/WETH?
+- hints and answer
+    - find the functions used to add or remove liquidity
+    - a liquidity pair token (ERC20) represents liquidity in the pool
+    - bonus points: how many liquidity providers (LPs) are active versus passive managers of their positions? Can you layer this as a type on top of the liquidity added/removed over time chart?
+*/
+with 
+-- get mints and burns 
+lp_mints as (
+    -- we want all mint events where liquidity was added 
+    SELECT
+        date_trunc('day', evt_block_time) as day
+        , contract_address as pair
+        , count(distinct tx."from") as unique_minters 
+        , sum(cast(amount0 as double)) as total_0_added
+        , sum(cast(amount1 as double)) as total_1_added
+
+    FROM uniswap_v3_polygon.UniswapV3Pool_evt_Mint as m -- we use event over call because it saves us one success filter
+    LEFT JOIN polygon.transactions as tx on m.evt_tx_hash = tx.hash -- we need transactions table to tell us the LP, sender in mint table is always going to be the uniswap router 
+    WHERE contract_address in (0xb122ab04a91145474db01027992c11cff72831f7,
+        0x42db00ace9490c73831e9f802525eb3fd23eb875,
+        0xba0216254163b57af68b7161cf824dbadcad61df,
+        0xb8a5a818b8e3030a8cf9203c44f4b94198bed1f9,
+        0x3c309414c174ca2ba0a68e0eccb15a233bc3ed8a,
+        0xf136762fb27ac65e86ab337e5eea1c32f8fe803d,
+        0x4ff1bf67727e623fbc1d44a005a3fe31c756fe0c,
+        0x2ef7246ee624aaf0cc19f98cbd4fd31392a938f8,
+        0x761513e761c8dda1863c948d5758d54984da46f7,
+        0x9064b96a124924ee3516072a78bf18dc22aa24b0,
+        0x2ed878ef6fa6dc4715bcbeb0de1bb1d7e0e66f4a,
+        0xadd7ee56650d50b582cdaadc7e761799df113160,
+        0x4d0b8fba429882f4ec58cc04ebeda8c8abcb4ceb,
+        0xdfd60e0296af5c35678866a81f53c068293fe978,
+        0x47afe6797053236587219aec33c2bec1295e8183,
+        0xdae22b8bf3903a50821b30b56c5be49da00e49dd,
+        0x1d71a7ea86358a9b11d0d7ed5fe970cdd66b546f,
+        0xbb68fda8854c1907d8977cc8178c4fe007255186,
+        0xf818f2be8ffa38bdcd88ed0e0dbde733bb880367,
+        0xce0bbb1e51ee21cde86257593f29cbd9a60ca97a,
+        0xc77cfae1506852ac220721155962eccea839485b,
+        0x516a04722d85fb216fa135b5b01bac60920e39c3,
+        0xf559f2c734b2b50a4170db19cfb9ea63be029dc6,
+        0xf8a609488afa66f2fda0cf5c1cfee9610d062fd7,
+        0x32a222f69d00e717845a3d857d0392d6a25a2acd,
+        0x3a1257c9909e84e88e6e3f42a748e4e0aac905ca,
+        0xefa98fdf168f372e5e9e9b910fcdfd65856f3986,
+        0x24d59117a8ef6ecbb3a59873327dbc7e2c95b3c1,
+        0xee9c67ba64c2673813f34ee672032f4271edbb53,
+        0xb5ec51eaf8bae7f8369d504c256aed8b751bad1a,
+        0xd39f5bbea894ff12c4f287855b5430d9c33734ed,
+        0xb3a157e26ebae072bc6a9f4307325d32393a91a2,
+        0x0cbab6b7cd05f92b22930286a95fd6df9dbc3f86,
+        0x15fef06b061ace438aa45e8d0ec1883ea6e47d35,
+        0xfc469d13542e70f1512569ebf60c1e8fa01b6931,
+        0x6c39b6caaa41e3894c68416a6ecd908ecd1bdb2b,
+        0x5d1e23160ed81f33dfae40ed72dd4377c198ddaf,
+        0xa56796f13566c515471a2fbbab731f88ce5de428,
+        0x384d2094d0df788192043a1cbd200308dd60b068)
+    GROUP BY 1, 2
+)
+
+, lp_burns as (
+    -- we want all mint events where liquidity was removed 
+    SELECT
+        date_trunc('day', evt_block_time) as day
+        , contract_address as pair
+        , count(distinct tx."from") as unique_burners
+        , sum(cast(amount0 as double)) as total_0_removed
+        , sum(cast(amount1 as double)) as total_1_removed
+
+    FROM uniswap_v3_polygon.UniswapV3Pool_evt_Burn b
+    LEFT JOIN polygon.transactions tx ON b.evt_tx_hash = tx.hash 
+    WHERE contract_address in (0xb122ab04a91145474db01027992c11cff72831f7,
+        0x42db00ace9490c73831e9f802525eb3fd23eb875,
+        0xba0216254163b57af68b7161cf824dbadcad61df,
+        0xb8a5a818b8e3030a8cf9203c44f4b94198bed1f9,
+        0x3c309414c174ca2ba0a68e0eccb15a233bc3ed8a,
+        0xf136762fb27ac65e86ab337e5eea1c32f8fe803d,
+        0x4ff1bf67727e623fbc1d44a005a3fe31c756fe0c,
+        0x2ef7246ee624aaf0cc19f98cbd4fd31392a938f8,
+        0x761513e761c8dda1863c948d5758d54984da46f7,
+        0x9064b96a124924ee3516072a78bf18dc22aa24b0,
+        0x2ed878ef6fa6dc4715bcbeb0de1bb1d7e0e66f4a,
+        0xadd7ee56650d50b582cdaadc7e761799df113160,
+        0x4d0b8fba429882f4ec58cc04ebeda8c8abcb4ceb,
+        0xdfd60e0296af5c35678866a81f53c068293fe978,
+        0x47afe6797053236587219aec33c2bec1295e8183,
+        0xdae22b8bf3903a50821b30b56c5be49da00e49dd,
+        0x1d71a7ea86358a9b11d0d7ed5fe970cdd66b546f,
+        0xbb68fda8854c1907d8977cc8178c4fe007255186,
+        0xf818f2be8ffa38bdcd88ed0e0dbde733bb880367,
+        0xce0bbb1e51ee21cde86257593f29cbd9a60ca97a,
+        0xc77cfae1506852ac220721155962eccea839485b,
+        0x516a04722d85fb216fa135b5b01bac60920e39c3,
+        0xf559f2c734b2b50a4170db19cfb9ea63be029dc6,
+        0xf8a609488afa66f2fda0cf5c1cfee9610d062fd7,
+        0x32a222f69d00e717845a3d857d0392d6a25a2acd,
+        0x3a1257c9909e84e88e6e3f42a748e4e0aac905ca,
+        0xefa98fdf168f372e5e9e9b910fcdfd65856f3986,
+        0x24d59117a8ef6ecbb3a59873327dbc7e2c95b3c1,
+        0xee9c67ba64c2673813f34ee672032f4271edbb53,
+        0xb5ec51eaf8bae7f8369d504c256aed8b751bad1a,
+        0xd39f5bbea894ff12c4f287855b5430d9c33734ed,
+        0xb3a157e26ebae072bc6a9f4307325d32393a91a2,
+        0x0cbab6b7cd05f92b22930286a95fd6df9dbc3f86,
+        0x15fef06b061ace438aa45e8d0ec1883ea6e47d35,
+        0xfc469d13542e70f1512569ebf60c1e8fa01b6931,
+        0x6c39b6caaa41e3894c68416a6ecd908ecd1bdb2b,
+        0x5d1e23160ed81f33dfae40ed72dd4377c198ddaf,
+        0xa56796f13566c515471a2fbbab731f88ce5de428,
+        0x384d2094d0df788192043a1cbd200308dd60b068)
+    GROUP BY 1, 2
+)
+
+, lp_combined as (
+    -- we want to join mints and burns in one table, and need to use full outer join and COALESCE because there might be days with only a burn or a mint
+    SELECT
+        COALESCE(m.day, b.day) as day 
+        , COALESCE(m.pair, b.pair) as pair 
+        , COALESCE(unique_minters, 0) as unique_minters
+        , COALESCE(unique_burners, 0) as unique_burners
+        , COALESCE(m.total_0_added, 0) as total_0_added
+        , COALESCE(m.total_1_added, 0) as total_1_added
+        , COALESCE(b.total_0_removed, 0) as total_0_removed
+        , COALESCE(b.total_1_removed, 0) as total_1_removed
+    FROM lp_mints m
+    FULL OUTER JOIN lp_burns b 
+        ON m.day = b.day 
+            AND m.pair = b.pair 
+)
+
+-- need to join to a complete sequence of dates so no days where nothing happened are missing
+, days as (
+        with days_seq as (
+            SELECT sequence(
+                (SELECT cast(min(day) as timestamp) FROM lp_combined)
+                , date_trunc('day', cast(now() as timestamp))
+                , interval '24' hour
+            ) as day
+        )
+        
+        SELECT 
+            days.day
+        FROM days_seq
+        CROSS JOIN unnest(day) as days(day)
+)
+
+, lp_combined_days as (
+    SELECT 
+        w.day 
+        , lp_combined.pair 
+        , lp_combined.unique_minters
+        , lp_combined.unique_burners
+        , lp_combined.total_0_added
+        , lp_combined.total_1_added
+        , lp_combined.total_0_removed
+        , lp_combined.total_1_removed
+    FROM days w 
+    LEFT JOIN lp_combined ON lp_combined.day = w.day 
+)
+
+, lp_combined_days_decimals as (
+    -- we're taking token0 and token1 addresses from the factory PairCreated, then getting decimals from tokens.erc20 table
+    SELECT 
+        lpw.day 
+        , lpw.pair 
+        , COALESCE(tk_0.symbol, '') as token0
+        , COALESCE(tk_1.symbol, '') as token1
+        , unique_minters
+        , -1 * unique_burners as unique_burners -- multiply by -1 for viz later 
+        , total_0_added/pow(10, COALESCE(tk_0.decimals, 18)) as total_0_added
+        , -1 * total_0_removed/pow(10, COALESCE(tk_0.decimals, 18)) as total_0_removed
+        , total_1_added/pow(10, COALESCE(tk_1.decimals, 18)) as total_1_added
+        , -1 * total_1_removed/pow(10, COALESCE(tk_1.decimals, 18)) as total_1_removed
+	, pc.tokenA as token0_address
+	, pc.tokenB as token1_address
+    FROM lp_combined_days lpw 
+    LEFT JOIN uniswap_v3_polygon.factory_polygon_call_createPool pc ON pc.output_pool = lpw.pair
+    LEFT JOIN tokens.erc20 tk_0 on tk_0.contract_address = pc.tokenA
+    LEFT JOIN tokens.erc20 tk_1 on tk_1.contract_address = pc.tokenB
+)
+
+SELECT * FROM lp_combined_days_decimals
+WHERE day > timestamp '{{start time}}'

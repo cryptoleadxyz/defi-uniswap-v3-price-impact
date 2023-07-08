@@ -1,0 +1,23 @@
+-- GNS - 0xe5417af564e4bfda1c483642db72007871397896
+-- Display any pair (n=27 on 2023-06-06) with GNS on Polygon, and added token information from tokens.erc20 table
+select 
+    p.output_pool as pair_address,
+    p.call_block_time as time,
+    p.tokenA,
+    t0.symbol as t0_symbol,
+    t0.blockchain as t0_blockchain,
+    p.tokenB,
+    t1.symbol as t1_symbol,
+    t1.blockchain as t1_blockchain
+    
+from uniswap_v3_polygon.factory_polygon_call_createPool p
+
+left join tokens.erc20 t0
+    on t0.contract_address = p.tokenA
+
+left join tokens.erc20 t1
+    on t1.contract_address = p.tokenB
+
+where (tokenA = 0xe5417af564e4bfda1c483642db72007871397896 or tokenB = 0xe5417af564e4bfda1c483642db72007871397896)
+    and ((t0.blockchain is NULL) or (t0.blockchain not in ('', 'ethereum', 'bnb', 'arbitrum', 'avalanche_c', 'fantom', 'gnosis', 'optimism')))
+    and ((t1.blockchain is NULL) or (t1.blockchain not in ('', 'ethereum', 'bnb', 'arbitrum', 'avalanche_c', 'fantom', 'gnosis', 'optimism')))

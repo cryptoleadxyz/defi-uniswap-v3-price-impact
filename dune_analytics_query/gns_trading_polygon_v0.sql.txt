@@ -1,0 +1,5 @@
+-- GNS - 0xe5417af564e4bfda1c483642db72007871397896
+select * from uniswap_v3_polygon.trades
+where (token_bought_address = 0xe5417af564e4bfda1c483642db72007871397896) or 
+    (token_sold_address = 0xe5417af564e4bfda1c483642db72007871397896)
+order by block_date desc

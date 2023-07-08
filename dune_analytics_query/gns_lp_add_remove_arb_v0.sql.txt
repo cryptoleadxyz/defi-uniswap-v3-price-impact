@@ -1,0 +1,161 @@
+-- link = https://www.youtube.com/watch?v=cRfNRfcbSDA&list=PLK3b5d4iK10cIrN8c_au9RrC0_eBCOyR2&index=9
+-- link = https://dune.com/queries/1769753
+-- Day 7: Liquidity (& LPs) Added and Removed Over Time for a DEX Pool (USDC/WETH)
+-- gns - 0x18c11fd286c5ec11c3b683caa813b77f5163a122
+-- for arbitrum
+
+/** 
+Amount of liquidity added and removed over time for USCD/WETH?
+- hints and answer
+    - find the functions used to add or remove liquidity
+    - a liquidity pair token (ERC20) represents liquidity in the pool
+    - bonus points: how many liquidity providers (LPs) are active versus passive managers of their positions? Can you layer this as a type on top of the liquidity added/removed over time chart?
+*/
+with 
+-- get mints and burns 
+lp_mints as (
+    -- we want all mint events where liquidity was added 
+    SELECT
+        date_trunc('day', evt_block_time) as day
+        , contract_address as pair
+        , count(distinct tx."from") as unique_minters 
+        , sum(cast(amount0 as double)) as total_0_added
+        , sum(cast(amount1 as double)) as total_1_added
+    FROM uniswap_v3_arbitrum.Pair_evt_Mint as m -- we use event over call because it saves us one success filter
+    LEFT JOIN arbitrum.transactions as tx on m.evt_tx_hash = tx.hash -- we need transactions table to tell us the LP, sender in mint table is always going to be the uniswap router 
+    WHERE contract_address in (0xebdffdfabc0c9723d24df3a8304467bac9c0ce42,
+        0xbc0246af68027f3386ee7c75b2f6022115977036,
+        0xaa6500cdfb9d355132a9b1824c7d13b26a59f653,
+        0x8a216504a7d3d6499d9111383622c30d9e83a166,
+        0x522b0b776f34dc3c762f0e74832f046a24491b6b,
+        0x33946ebb43ab295d0595f7d6e70748e468e4ac8d,
+        0xff33c0e8fe0957a8ea7f79a1a581cb9c6fb82f8a,
+        0x6b748ca0b21666869b0901335df7eb7bfb98fa3a,
+        0x858645a4745901d3f44446a34968eb545adbad63,
+        0x1d6394f013ef1f9d98c5d9c1e56e10ce33ccd5d1,
+        0x4d2fe06fd1c4368042b926d082484d2e3cc8f3f5,
+        0x05cf80699d9912b8b81c2c777e6612bb3452f0f2,
+        0xb563eb9b2aef445ba2c16487bbc2132a9be55d46,
+        0x5f4951324b998a2137db656e998d5ee82799dc01,
+        0xfb30135d5bde908b88e5422baa6093065304d98b,
+        0xbea9949ce508a68ddeee37cd8d29e2ba0e35c728,
+        0xc91b7b39bbb2c733f0e7459348fd0c80259c8471,
+        0x00c3a1c542ec29457286357143153cd1110e02b3,
+        0x8d76e9c2bd1adde00a3dcdc315fcb2774cb3d1d6,
+        0x6d1a1e1a7e54640df657f25655dde5bbd71947ef,
+        0x1192384cd041ae6e53aa43d07af383e01951e23e,
+        0x3884312c7711e857dea4278883cf91a042ce03df,
+        0x480b247c62e87fcf3c82a88f6dd4f9c61b474ebf,
+        0x267fcf6cb04eda3c997b7e49d8b7b95382b0ee7b,
+        0x64165914ca8fc1190f9d03179550fb7ba9457071)
+    GROUP BY 1, 2
+)
+
+, lp_burns as (
+    -- we want all mint events where liquidity was removed 
+    SELECT
+        date_trunc('day', evt_block_time) as day
+        , contract_address as pair
+        , count(distinct tx."from") as unique_burners
+        , sum(cast(amount0 as double)) as total_0_removed
+        , sum(cast(amount1 as double)) as total_1_removed
+    FROM uniswap_v3_arbitrum.Pair_evt_Burn b
+    LEFT JOIN arbitrum.transactions tx ON b.evt_tx_hash = tx.hash 
+    WHERE contract_address in (0xebdffdfabc0c9723d24df3a8304467bac9c0ce42,
+        0xbc0246af68027f3386ee7c75b2f6022115977036,
+        0xaa6500cdfb9d355132a9b1824c7d13b26a59f653,
+        0x8a216504a7d3d6499d9111383622c30d9e83a166,
+        0x522b0b776f34dc3c762f0e74832f046a24491b6b,
+        0x33946ebb43ab295d0595f7d6e70748e468e4ac8d,
+        0xff33c0e8fe0957a8ea7f79a1a581cb9c6fb82f8a,
+        0x6b748ca0b21666869b0901335df7eb7bfb98fa3a,
+        0x858645a4745901d3f44446a34968eb545adbad63,
+        0x1d6394f013ef1f9d98c5d9c1e56e10ce33ccd5d1,
+        0x4d2fe06fd1c4368042b926d082484d2e3cc8f3f5,
+        0x05cf80699d9912b8b81c2c777e6612bb3452f0f2,
+        0xb563eb9b2aef445ba2c16487bbc2132a9be55d46,
+        0x5f4951324b998a2137db656e998d5ee82799dc01,
+        0xfb30135d5bde908b88e5422baa6093065304d98b,
+        0xbea9949ce508a68ddeee37cd8d29e2ba0e35c728,
+        0xc91b7b39bbb2c733f0e7459348fd0c80259c8471,
+        0x00c3a1c542ec29457286357143153cd1110e02b3,
+        0x8d76e9c2bd1adde00a3dcdc315fcb2774cb3d1d6,
+        0x6d1a1e1a7e54640df657f25655dde5bbd71947ef,
+        0x1192384cd041ae6e53aa43d07af383e01951e23e,
+        0x3884312c7711e857dea4278883cf91a042ce03df,
+        0x480b247c62e87fcf3c82a88f6dd4f9c61b474ebf,
+        0x267fcf6cb04eda3c997b7e49d8b7b95382b0ee7b,
+        0x64165914ca8fc1190f9d03179550fb7ba9457071)
+    GROUP BY 1, 2
+)
+
+, lp_combined as (
+    -- we want to join mints and burns in one table, and need to use full outer join and COALESCE because there might be days with only a burn or a mint
+    SELECT
+        COALESCE(m.day, b.day) as day 
+        , COALESCE(m.pair, b.pair) as pair 
+        , COALESCE(unique_minters, 0) as unique_minters
+        , COALESCE(unique_burners, 0) as unique_burners
+        , COALESCE(m.total_0_added, 0) as total_0_added
+        , COALESCE(m.total_1_added, 0) as total_1_added
+        , COALESCE(b.total_0_removed, 0) as total_0_removed
+        , COALESCE(b.total_1_removed, 0) as total_1_removed
+    FROM lp_mints m
+    FULL OUTER JOIN lp_burns b 
+        ON m.day = b.day 
+            AND m.pair = b.pair 
+)
+
+-- need to join to a complete sequence of dates so no days where nothing happened are missing
+, days as (
+        with days_seq as (
+            SELECT sequence(
+                (SELECT cast(min(day) as timestamp) FROM lp_combined)
+                , date_trunc('day', cast(now() as timestamp))
+                , interval '24' hour
+            ) as day
+        )
+        
+        SELECT 
+            days.day
+        FROM days_seq
+        CROSS JOIN unnest(day) as days(day)
+)
+
+, lp_combined_days as (
+    SELECT 
+        w.day 
+        , lp_combined.pair 
+        , lp_combined.unique_minters
+        , lp_combined.unique_burners
+        , lp_combined.total_0_added
+        , lp_combined.total_1_added
+        , lp_combined.total_0_removed
+        , lp_combined.total_1_removed
+    FROM days w 
+    LEFT JOIN lp_combined ON lp_combined.day = w.day 
+)
+
+, lp_combined_days_decimals as (
+    -- we're taking token0 and token1 addresses from the factory PairCreated, then getting decimals from tokens.erc20 table
+    SELECT 
+        lpw.day 
+        , lpw.pair 
+        , COALESCE(tk_0.symbol, '') as token0
+        , COALESCE(tk_1.symbol, '') as token1
+        , unique_minters
+        , -1 * unique_burners as unique_burners -- multiply by -1 for viz later 
+        , total_0_added/pow(10, COALESCE(tk_0.decimals, 18)) as total_0_added
+        , -1 * total_0_removed/pow(10, COALESCE(tk_0.decimals, 18)) as total_0_removed
+        , total_1_added/pow(10, COALESCE(tk_1.decimals, 18)) as total_1_added
+        , -1 * total_1_removed/pow(10, COALESCE(tk_1.decimals, 18)) as total_1_removed
+	, pc.tokenA as token0_address
+	, pc.tokenB as token1_address
+    FROM lp_combined_days lpw 
+    LEFT JOIN uniswap_v3_arbitrum.UniswapV3Factory_call_createPool pc ON pc.output_pool = lpw.pair
+    LEFT JOIN tokens.erc20 tk_0 on tk_0.contract_address = pc.tokenA
+    LEFT JOIN tokens.erc20 tk_1 on tk_1.contract_address = pc.tokenB
+)
+
+SELECT * FROM lp_combined_days_decimals
+WHERE day > timestamp '{{start time}}'

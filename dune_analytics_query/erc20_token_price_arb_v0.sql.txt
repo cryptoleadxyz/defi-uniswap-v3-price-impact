@@ -1,0 +1,31 @@
+SELECT
+  date_trunc('day', minute) AS day,
+  AVG(price) AS price,
+  symbol,
+  blockchain
+FROM
+  prices.usd
+WHERE
+  symbol in ('GNS',
+    'LUSD',
+    'RDNT',
+    'NRD',
+    'MAGIC',
+    'ARB',
+    'WETH',
+    'USDT',
+    'UNI',
+    'GMX',
+    'DAI',
+    'LINK',
+    'MATIC',
+    'USDC',
+    'WBTC')
+
+  AND blockchain = 'arbitrum'
+GROUP BY
+  date_trunc('day', minute),
+  symbol,
+  blockchain
+ORDER BY
+  date_trunc('day', minute) DESC
